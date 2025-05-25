@@ -1,6 +1,7 @@
 import numpy as np
 import argparse
 
+THRESHOLD = 0.5
 
 def sigmoid(x : np.ndarray):
     """
@@ -24,24 +25,24 @@ def train(
     num_epoch : int, 
     learning_rate : float
 ) -> None:
-    # TODO: Implement `train` using vectorization
-    pass
+    for _ in range(num_epoch):
+        for ith in range(X.shape[0]):
+            gradient = (sigmoid(X[ith] @ theta) - y[ith]) * X[ith]
+            theta -= learning_rate * gradient
 
 
 def predict(
     theta : np.ndarray,
     X : np.ndarray
 ) -> np.ndarray:
-    # TODO: Implement `predict` using vectorization
-    pass
+    return sigmoid(X @ theta) > THRESHOLD
 
 
 def compute_error(
-    y_pred : np.ndarray, 
+    y_pred : np.ndarray,
     y : np.ndarray
 ) -> float:
-    # TODO: Implement `compute_error` using vectorization
-    pass
+    return float(np.mean(y != y_pred))
 
 
 if __name__ == '__main__':
@@ -60,3 +61,35 @@ if __name__ == '__main__':
     parser.add_argument("learning_rate", type=float,
                         help='learning rate for stochastic gradient descent')
     args = parser.parse_args()
+
+    train_data = np.genfromtxt(args.train_input, delimiter="\t")
+    val_data = np.genfromtxt(args.validation_input, delimiter="\t")
+    test_data = np.genfromtxt(args.test_input, delimiter="\t")
+
+    # training: 
+    labels, features = train_data[:, 0], train_data[:, 1:]
+    N, D = features.shape
+    features = np.concatenate([features, np.ones(((N, 1)))], axis=1)
+    theta = np.zeros(D+1)
+    train(theta, features, labels, args.num_epoch, args.learning_rate)  
+
+    # predict training dataset
+    predict_labels = predict(theta, features)
+    training_error = compute_error(predict_labels, labels) 
+    with open(args.train_out, 'w') as fout:
+        for label in predict_labels:
+            fout.write(f"{int(label)}\n")
+    
+    # predict testing dataset
+    labels, features = test_data[:, 0], test_data[:, 1:]
+    N, D = features.shape
+    features = np.concatenate([features, np.ones(((N, 1)))], axis=1)
+    predict_labels = predict(theta, features)
+    test_error = compute_error(predict_labels, labels)
+    with open(args.test_out, 'w') as fout:
+        for label in predict_labels:
+            fout.write(f"{int(label)}\n")
+
+    with open(args.metrics_out, 'w') as fout:
+        fout.write(f"error(train): {training_error:.6f}\n")
+        fout.write(f"error(test): {test_error:.6f}")
